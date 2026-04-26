@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.sql.SQLIntegrityConstraintViolationException;
+
 /**
  * 全局异常处理器，处理项目中抛出的业务异常
  */
@@ -23,5 +25,16 @@ public class GlobalExceptionHandler {
         log.error("异常信息：{}", ex.getMessage());
         return Result.error(ex.getMessage());
     }
+
+	/**
+	 * 处理SQL异常
+	 * @param ex
+	 * @return
+	 */
+	@ExceptionHandler
+	public Result exceptionHandler(SQLIntegrityConstraintViolationException ex){
+		log.error("异常信息：{}", ex.getMessage());
+		return Result.error("服务器异常: " + ex.getMessage());
+	}
 
 }
