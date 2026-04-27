@@ -17,7 +17,6 @@
 ## 开发过程所学知识点
 
 1. 前后端联调: nginx反向代理, 将前端发送的请求有nginx转发到后端服务器
-   
    - 浏览器 -> `http://localhost/api/employee/login` -> nginx -> `http://localhost:8080/admin/employee/login` -> 服务器tomcat
    - 好处:
      - 提高访问速度: nginx有缓存, 同样接口无需访问服务器, 直接返回缓存数据
@@ -25,6 +24,16 @@
      - 保证后端服务安全: 防止直接暴露服务器ip地址
    - 配置nginx反向代理/负载均衡: nginx.conf文件中server
 2. MyBatis 的 `<where>` 标签会自动去除第一个多余的 AND 或 OR，但不会在条件之间自动添加连接符, 反正在标签中有 AND/OR 都放即可
+3. 公共字段填充(AOP):
+   - 问题: 很多业务表中有公共字段(update_time等), 在代码中很多相同的操作对其修改, 不便于后期修改
+   - 解决: 使用 AOP 技术在所需方法运行前加入通知
+   - 创建 annotation 自定义注解, 用以标识要 AOP 的方法和不同的方法要执行的不同通知(使用注解的属性指定是update/insert方法)(使用注解是因为要同时拦截update和insert, 只用execution比较麻烦)
+   - 创建 aspect 切面类, 统一拦截有注解的方法(execution/@annotation)
+   - 在 mapper 中对应方法增加注解
+   - 完善 aspect 通知:
+     - 获取数据库操作类型(update/insert)
+     - 获取被拦截方法的参数: 实体对象(约定好第一个参数是对象, 其余的不管)
+     - 通过反射获取对象方法并赋值(update_time...)
 
 
 ## 开发过程小技巧
@@ -89,4 +98,10 @@
 - 修改分类
 - 启用禁用分类
 - 根据类型查询分类
+- 公共字段填充
+  - create_time/create_user/update_time/update_user在insert/update时与其他表操作相同, AOP统一处理
+
+#### 菜品管理
+
+
 
