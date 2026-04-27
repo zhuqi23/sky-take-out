@@ -7,7 +7,7 @@
     <select id="pageQuery" resultType="com.sky.entity.Employee">
         select * from employee
         <where>
-            <!--  test是if标签的判断内容, true则添加其中内容  -->
+            <!--  test是if标签的判断内容, true则添加其中内容, #{}名从方法参数获取  -->
             <if test="name != null and name != ''">
                 name like concat('%',#{name},'%')
             </if>
