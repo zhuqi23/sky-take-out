@@ -1,16 +1,20 @@
 package com.sky.service.impl;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
 import com.sky.constant.PasswordConstant;
 import com.sky.constant.StatusConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
+import com.sky.dto.EmployeePageQueryDTO;
 import com.sky.entity.Employee;
 import com.sky.exception.AccountLockedException;
 import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
 import com.sky.mapper.EmployeeMapper;
+import com.sky.result.PageResult;
 import com.sky.service.EmployeeService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,12 +85,69 @@ public class EmployeeServiceImpl implements EmployeeService {
 		employee.setCreateTime(LocalDateTime.now());
 		employee.setUpdateTime(LocalDateTime.now());
 		// 设置当前记录创建人id和修改人id: 当前登录用户id, 从登录的token获取
-		// TODO 后期需要从ThreadLocal中获取
 		employee.setCreateUser(BaseContext.getCurrentId());
 		employee.setUpdateUser(BaseContext.getCurrentId());
 
 		// 插入数据
 		employeeMapper.insert(employee);
+	}
+
+	/**
+	 * 分页查询
+	 * @param employeePageQueryDTO
+	 * @return
+	 */
+	@Override
+	public PageResult page(EmployeePageQueryDTO employeePageQueryDTO) {
+		// 开始分页, 在接下来的sql的最后添加 `limit ?, ?`, 故sql最后不能有 ';', 并执行`select count(0) from employee`统计总数
+		PageHelper.startPage(employeePageQueryDTO.getPage(), employeePageQueryDTO.getPageSize());
+		// page中的数据是查询结果, 带有总数和结果集
+		Page<Employee> page = employeeMapper.pageQuery(employeePageQueryDTO);
+
+		return new PageResult(page.getTotal(), page.getResult());
+
+	}
+
+	/**
+	 * 启用禁用员工账号
+	 * @param status
+	 * @param id
+	 */
+	@Override
+	public void startOrStop(Integer status, Long id) {
+		Employee employee = Employee.builder()
+				.status(status)
+				.id(id)
+				.build();
+		// 设置员工状态, update可用于修改其他属性, 有通用性
+		employeeMapper.update(employee);
+	}
+
+	/**
+	 * 根据id查询员工信息
+	 * @param id
+	 * @return
+	 */
+	@Override
+	public Employee getById(Long id) {
+		Employee employee = employeeMapper.getById(id);
+		employee.setPassword("****");  // 密码不返回
+		return employee;
+	}
+
+	/**
+	 * 修改员工信息
+	 * @param employeeDTO
+	 */
+	@Override
+	public void update(EmployeeDTO employeeDTO) {
+		Employee employee = new Employee();
+		BeanUtils.copyProperties(employeeDTO, employee);
+		// 设置修改时间/修改人
+		employee.setUpdateTime(LocalDateTime.now());
+		employee.setUpdateUser(BaseContext.getCurrentId());
+
+		employeeMapper.update(employee);
 	}
 
 }
