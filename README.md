@@ -52,13 +52,15 @@
      echo "%OSS_ACCESS_KEY_ID%"
      echo "%OSS_ACCESS_KEY_SECRET%"
      ```
-   - 完成程序(依据oss官网)
+   - 完成程序并集成(依据oss官网)
      - pom.xml 中增加 oss 相关依赖
      - 在 application.yml 中配置 alioss 内容
      - 新建 AliOssProperties配置类 匹配 application.yml 的内容
      - 新建 AliOssUtil工具类 实现文件上传功能(依据oss示例)
      - 新建 OssConfiguration配置类 初始化 AliOssUtil类对象
-     - 在 CommonController 中实现 /upload 路径对应的 upload 方法, 在其中调用 aliOssUtile.upload 上传文件到 oss
+     - 在 CommonController 中实现 /upload 路径对应的 upload 方法
+       - 传入 MultipartFile文件类型, 获取文件后缀, 生成唯一文件名
+       - 调用 aliOssUtile.upload 上传文件到 oss, 并返回 oss 中的路径
 5. com.sky.properties 配置文件作用
    
    - springboot 的配置属性绑定类, 将 application.yml 配置项自动映射到 properties 的对象属性上
@@ -72,6 +74,29 @@
    - springboot 的主配置文件, 开发环境和测试环境不同可能会有不同配置, 故用引用的方式将 dev(application-dev.yml) 作为开发环境文件具体配置, 在其他环境时提供其他环境配置文件(eg.prod), 修改 spring.profiles.active 中的内容即可更换
    - 使用 ${dev中的路径} 作为数据
    - 与配置属性类 properties 相对应获取, 用 '-' 分隔, spring 会自动转换为驼峰命名法
+7. controller类 注解
+   
+   - @RequestBody: 将请求体中的 json 转为对象, 注意Get请求没有请求体
+   - @RequestParam: 请求参数, 获取 url 中 ? 后面的同名参数值, eg. /employee/page?page=1
+     - 不用@RequestParam: 传入的参数与接收的对象相匹配, spring会自动将同名参数值转为对象
+     - 使用情况:
+       - java参数是基本类型/string(可忽略)
+       - 传入字符串1,2,3要自动转成List
+       - 前后端参数名不一致
+       - 设置默认值/可选参数
+   - @PathVariable: Path参数, 获取 url 中 {} 中的参数值, eg. /employee/{id}/status
+   - @RestController: @Controller + @ResponseBody, RESTful风格控制器
+     - 方法返回值直接作为响应体（通常是将值转为 JSON），不经过视图解析器
+   - @Controller: 返回页面，标识控制器类，处理 Web 请求，通常配合视图模板使用
+   - @Component: 通用组件注解，spring扫描（大部分spring注解包含），将类标记为 Spring 容器管理的 Bean
+8. 事务开启情况:
+   
+   - 多个写操作(增删改)
+   - 先查询后修改
+   - 多表级联操作(操作主子表)
+   - 金融相关
+   - 多个读操作(视情况而定, 开启 readOnly)
+
 
 ## 开发过程小技巧
 
@@ -80,6 +105,27 @@
 3. 在 Swagger/ApiFox 中修改数据, 会跳过各种前端检测使得数据不合理
 4. application-dev.yml内包含敏感信息(eg.oss密钥...), 不能一起推送到GitHub, 在 .gitignore文件中添加 **/application-dev.yml
 5. 本地提交 git 但远程推送失败, 修改后重新提交
+
+- ```
+  cd D:\Project_Sky\code\sky-take-out
+  :: 1. 撤销上一次提交（保留代码修改）
+  git reset --soft HEAD~1
+  :: 2. 取消暂存所有文件
+  git reset HEAD .
+  :: 3. 重新添加文件（排除 application-dev.yml）
+  git add .
+  :: 4. 检查是否有敏感文件被添加
+  git status
+  :: 5. 如果看到 application-dev.yml 在列表中，移除它
+  git rm --cached sky-server/src/main/resources/application-dev.yml
+  :: 6. 重新提交
+  git commit -m "xxx"
+  :: 7. 推送到远程
+  git push origin main
+  ```
+
+6. 不要在循环中使用 sql, 建议使用动态 sql 查询, 传 list 到 mapper, 在 xml 写 foreach
+7. mysql 中 join 默认是 inner join
 
 ## 开发流程
 
@@ -146,11 +192,52 @@
   - 根据类型查询分类(分类管理处已完成)
   - 文件上传(阿里云oss存储)
     - 返回文件上传路径, 用于回显图片
-  - 新增菜品
-    - 保存菜品及其口味, 同时操作两张表, 要开启事务 @Transactional
+  - 新增菜品 @Transactional
+    - 保存菜品及其口味
     - 插入一条菜品表: 将数据库生成的自增 ID 回填到传入对象的 id 属性中
     - 批量插入口味表: 获取菜品id, 遍历插入菜品id, insertBatch
     - insertBatch: 在 mapper.xml 中使用 foreach 批量插入
 - 菜品分页查询
   - 返回值包含分类名称, 设计返回值类型 VO类, 多表查询获取名称
+- 菜品批量删除 @Transactional
+  - 起售的菜品不能删除, 套餐关联的菜品不能删除, 有一个菜品不能删则操作失败, 抛出异常
+    - 分别判断是否有起售/关联套餐
+  - 先删除对应口味, 再批量删除菜品(避免外键约束)
+- 修改菜品
+  - 查询菜品用于回显
+    - 分开查询关联口味(多表一起查询需要映射且复用性较低)
+  - 根据类型查询分类(分类管理处已完成): 用以选择菜品分类
+  - 文件上传(新增菜品处已完成)
+  - 修改菜品
+    - 修改口味: 先删除原口味, 再新增口味(要设置菜品id)
+- 根据分类查找菜品(用以后续套餐选择菜品)
+
+#### 套餐管理
+
+- 新增套餐 @Transactional
+  - 插入一条套餐数据, 之后获取生成的 id, 遍历填充关系数据的套餐 id
+  - 插入多条套餐-菜品关系数据
+- 套餐分页查询
+- 删除套餐 @Transactional
+  - 起售中的套餐不能删除
+  - 先删除套餐菜品关系, 再删除套餐
+- 根据 id 查询套餐
+  - 分别查询套餐表和套餐-菜品关系表, 再组合在一起
+- 修改套餐 @Transactional
+  - 修改套餐表
+  - 修改套餐-菜品关系表, 先删再加
+- 起售/停售
+  - 起售时如果有停售菜品则失败
+
+## 改进课程内容
+
+#### 菜品管理
+
+1. 菜品批量删除
+   - 课程使用 for 循环遍历 ids, sql 查询每个 id 是否起售, 获取所有 ids 对应的套餐 id 进行返回
+   - 问题: for 循环内使用 sql, 获取所有 id 消耗性能
+   - 改进: 使用 exist/in 进行查询, dish 表内存在 ids 包含的 id, 且起售则返回 true; setmeal_dish 表内存在包含 ids 对应的套餐 id 则返回
+   - 优势: 不在循环内使用 sql, 使用 exist 只需找到一条符合即可返回, 提高性能
+   - 进一步改进方案: 能删除的就删除, 不能的返回 ids 和原因(起售/关联套餐)
+   - 进一步解决方案: 一开始就将 ids 参数分为三部分, 分别进行删除/返回原因
 

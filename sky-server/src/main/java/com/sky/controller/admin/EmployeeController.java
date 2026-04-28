@@ -139,7 +139,7 @@ public class EmployeeController {
 /*
 @RequestBody: 将请求体中的 json 转为对象, 注意Get请求没有请求体
 @RequestParam: 请求参数, 获取 url 中 ? 后面的同名参数值, 请求参数/employee/page?page=1
-	不用@RequestParam: java参数是对象时, spring会自动将同名参数值转为对象
-	使用情况: java参数是基本类型/string(可忽略), 前后端参数名不一致, 设置默认值/可选参数
+	不用@RequestParam: 传入的参数与接收的对象相匹配, spring会自动将同名参数值转为对象
+	使用情况: java参数是基本类型/string(可忽略), 传入字符串1,2,3要自动转成List, 前后端参数名不一致, 设置默认值/可选参数
 @PathVariable: Path参数, 获取 url 中 {} 中的参数值, 路径参数/employee/{id}/status
  */

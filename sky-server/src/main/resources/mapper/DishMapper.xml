@@ -3,7 +3,6 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.sky.mapper.DishMapper">
 
-
     <select id="page" resultType="com.sky.vo.DishVO">
         select d.*, c.name as categoryName
         from dish d left join category c on d.category_id = c.id
@@ -15,4 +14,37 @@
         order by d.update_time desc
     </select>
 
+    <select id="checkDishStatus" resultType="java.lang.Boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM dish
+            WHERE id IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            AND status = 1
+        )
+    </select>
+
+    <delete id="deleteBatch">
+        DELETE FROM dish WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <update id="update">
+        UPDATE dish
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="image != null">image = #{image},</if>
+            <if test="description != null">description = #{description},</if>
+            update_time = #{updateTime},
+            update_user = #{updateUser}
+        </set>
+        WHERE id = #{id}
+    </update>
 </mapper>
