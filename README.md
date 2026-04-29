@@ -85,7 +85,7 @@
        - 前后端参数名不一致
        - 设置默认值/可选参数
    - @PathVariable: Path参数, 获取 url 中 {} 中的参数值, eg. /employee/{id}/status
-   - @RestController: @Controller + @ResponseBody, RESTful风格控制器
+   - @RestController: @Controller + @ResponseBody, RESTful风格控制器; @RestController(spring类名) 防止同名类在 spring 中冲突
      - 方法返回值直接作为响应体（通常是将值转为 JSON），不经过视图解析器
    - @Controller: 返回页面，标识控制器类，处理 Web 请求，通常配合视图模板使用
    - @Component: 通用组件注解，spring扫描（大部分spring注解包含），将类标记为 Spring 容器管理的 Bean
@@ -96,6 +96,73 @@
    - 多表级联操作(操作主子表)
    - 金融相关
    - 多个读操作(视情况而定, 开启 readOnly)
+
+#### Redis
+
+1. 简介:
+   
+   - 基于内存的 key-value 结构数据库
+   - 内存存储, 读写性能高
+   - 适合存储短期有大量用户的情况
+2. 安装设置:
+   
+   - github 下载安装包, 解压缩即可
+   - 密码: 在 redis.windows.conf 中设置 requirepass 密码, 即可
+   - 服务端: cmd中 redis-server.exe redis.windows.conf
+   - 客户端: cmd中 redis-cli -h localhost -p 6379 -a 密码
+3. 数据类型: key 是字符串类型, value 有以下 5 种
+   
+   - 字符串 string:
+   - 哈希 hash: 类似map, 可存对象
+   - 列表 list:
+   - 集合 set: 无重复
+   - 有序集合 sorted set / zset: 每个元素关联一个分数(double), 按分数升序
+4. 常用命令(不分大小写)
+   
+   1. 字符串操作命令
+      
+      - SET key value: 设置指定 key 的值, 已有 key 时会覆盖
+      - GET key: 获取指定 key 的值
+      - SETEX key seconds value: 设置指定 key 的值, 并将 key 的过期时间设为 seconds 秒, 过期后 key 自动被清理掉(短信验证码)
+      - SETNX key value: 只有在 key 不存在时才设置 key 的值(分布式锁)
+   2. Hash 操作命令
+      
+      - HSET key field value: 将哈希表key中的字段field的值设为value
+      - HGET key field: 获取存储在哈希表中指定字段的值
+      - HDEL key field: 删除存储在哈希表中的指定字段
+      - HKEYS key: 获取哈希表中所有字段
+      - HVALS key: 获取哈希表中所有值
+   3. 列表操作命令: (第一个l/r代表左右首尾)
+      
+      - LPUSH/RPUSH key value1 value2...: 将一个/多个值插入到列表
+      - LRANGE key start stop(0开始): 获取列表区间 [start, stop] 的元素
+      - RPOP/LPOP key(返回移除的值): 移除并获取列表最后一个元素
+      - LLEN key: 获取列表长度
+   4. 集合操作命令
+      
+      - SADD key member1 member2 ...: 向集合添加一个/多个成员
+      - SMEMBERS key: 返回集合中的所有成员
+      - SCARD key: 获取集合的成员数
+      - SINTER key1 key2 ...: 返回给定所有集合的交集(都有)
+      - SUNION key1 key2 ...: 返回所有给定集合的并集(一方有即可)
+      - SREM key member1 member2 ...: 删除集合中一个或多个成员
+   5. 有序集合操作命令(score有丢失精度问题)
+      
+      - ZADD key score1 member1 score2 member2 ...: 向有序集合添加一个/多个成员
+      - ZRANGE key start stop [WITHSCORES]: 返回区间 [start, stop] 内的成员, 带有 WITHSCORES 则一起返回分数
+      - ZINCRBY key increment member: 有序集合中对指定成员的分数加上增量increment
+      - ZREM key member1 member2 ...: 移除有序集合中的一个或多个成员
+   6. 通用操作命令
+      
+      - KEYS pattern: 查找所有符合给定模式(pattern)的 key
+      - EXISTS key: 检查是否存在指定 key
+      - TYPE key: 返回 key 存储的值的类型
+      - DEL key1 key2 ...: 删除 key
+5. Java 中操作 Redis (Spring Data Redis 使用, 详见 Test.java)
+   
+   1. 导入 pom.xml 依赖, 配置 application redis数据源
+   2. 编写配置类 RedisConfiguration, 创建 RedisTemplate 对象
+   3. 通过注入 RedisTemplate 对象操作 Redis
 
 
 ## 开发过程小技巧
@@ -228,6 +295,13 @@
   - 修改套餐-菜品关系表, 先删再加
 - 起售/停售
   - 起售时如果有停售菜品则失败
+
+#### 营业状态管理
+
+- 设置营业状态(使用 redis 存储)
+  - 打烊: 客户无法下单点餐
+  - 查询营业状态(管理/用户端)
+  - 修改营业状态
 
 ## 改进课程内容
 
