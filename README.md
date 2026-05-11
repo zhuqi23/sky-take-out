@@ -96,6 +96,18 @@
    - 多表级联操作(操作主子表)
    - 金融相关
    - 多个读操作(视情况而定, 开启 readOnly)
+9. HttpClient库: 在 java 中发送 http 请求, 高效开发 http 的客户端
+   
+   - 导入依赖
+   - 创建 HttpClient 对象
+   - 创建 Http 请求对象
+   - 调用 HttpClient 的 execute 方法发送请求
+   - 将以上操作包装为 Util 工具
+10. 微信小程序开发
+    
+    - 注册/完善程序 -> 开发小程序 -> 提交审核发布
+    - 微信登录: 小程序 wx.login() 获取 code -> wx.request() 发送 code 到服务器 -> 服务器登录凭证校验接口 -> 自定义并返回登录状态(token) -> 小程序存储登录状态 -> wx.request() 发起业务请求 -> 服务器返回数据
+    - 服务器端配置: application.yml appid和密钥(WeChatProperties对应), 微信用户的 jwt 配置(JwtProperties中对应)
 
 #### Redis
 
@@ -164,7 +176,6 @@
    2. 编写配置类 RedisConfiguration, 创建 RedisTemplate 对象
    3. 通过注入 RedisTemplate 对象操作 Redis
 
-
 ## 开发过程小技巧
 
 1. TODO 用来标识后续要改进的部分
@@ -193,6 +204,7 @@
 
 6. 不要在循环中使用 sql, 建议使用动态 sql 查询, 传 list 到 mapper, 在 xml 写 foreach
 7. mysql 中 join 默认是 inner join
+8. try-with-resource: 自动管理/释放资源, 将要自动管理的资源声明在 try() 内即可, 多个资源用 ';' 分隔 / 嵌套使用,  `try(A a; B b) {throw?} catch() {}`
 
 ## 开发流程
 
@@ -302,6 +314,18 @@
   - 打烊: 客户无法下单点餐
   - 查询营业状态(管理/用户端)
   - 修改营业状态
+
+### 用户端开发
+
+#### 微信登录, 商品浏览导入
+
+- 微信登录: 要同时生成 Jwt 令牌
+- 添加用户拦截器: 新增 JwtTokenUserInterceper 拦截器, MVCConfig 中注册
+- 导入商品浏览: 查询分类, 根据分类id查询菜品, 根据分类id查询套餐, 根据套餐id查询包含的菜品
+
+#### 缓存菜品
+
+
 
 ## 改进课程内容
 
