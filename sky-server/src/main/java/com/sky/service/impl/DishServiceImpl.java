@@ -145,6 +145,11 @@ public class DishServiceImpl implements DishService {
 		List<DishVO> dishVOList = new ArrayList<>();
 
 		for (Dish d : dishList) {
+			// 如果传入了状态条件，则只返回对应状态的菜品, 用户只能查询起售状态的菜品
+			if (dish.getStatus() != null && !d.getStatus().equals(dish.getStatus())) {
+				continue;
+			}
+			
 			DishVO dishVO = new DishVO();
 			BeanUtils.copyProperties(d,dishVO);
 

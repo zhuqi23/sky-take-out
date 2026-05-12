@@ -122,7 +122,7 @@
    - 密码: 在 redis.windows.conf 中设置 requirepass 密码, 即可
    - 服务端: cmd中 redis-server.exe redis.windows.conf
    - 客户端: cmd中 redis-cli -h localhost -p 6379 -a 密码
-3. 数据类型: key 是字符串类型, value 有以下 5 种
+3. 数据类型: key 是字符串类型, 没有树形结构但可以用 ":" 模拟, value 有以下 5 种
    
    - 字符串 string:
    - 哈希 hash: 类似map, 可存对象
@@ -175,6 +175,27 @@
    1. 导入 pom.xml 依赖, 配置 application redis数据源
    2. 编写配置类 RedisConfiguration, 创建 RedisTemplate 对象
    3. 通过注入 RedisTemplate 对象操作 Redis
+6. SpringCache: 基于注解实现缓存功能,加一个注解就能实现缓存
+   
+   1. 导入 redis/EHCache 的依赖包
+   2. 注解
+      - @EnableCaching: 开启缓存注解功能, 通常加在启动类上
+      - @Cacheable(cacheNames="缓存名", key="#参数"): 方法执行前查询缓存中 "缓存名:参数" 是否有数据, 有则返回缓存, 无则调用方法并缓存
+      - @CachePut(cacheNames="缓存名", key="#参数/result.属性"): 将方法返回值放入缓存, key为 缓存名:key值
+      - @CacheEvict(cacheNames, key/allEntries=true(全部删)): 清理缓存
+7. 缓存问题:
+   
+   1. 缓存穿透: 查询一个根本不存在的数据，缓存和数据库中都没有
+      
+      - 缓存空对象：即使数据库中没有，也缓存一个null值
+      - 布隆过滤器：在访问缓存前先判断key是否可能存在
+      - 参数校验：对明显非法的参数直接拦截
+   2. 缓存击穿: 某个 key 在过期瞬间，大量并发请求同时到达数据库
+      
+      - 互斥锁（Mutex Lock）：只让一个线程查询数据库，其他线程等待
+      - 逻辑过期：不设置TTL，在value中包含过期时间，异步更新
+      - 热点数据永不过期：物理上不过期，通过后台任务更
+   3. 建议手动 RedisTemplate 实现缓存, springcache 要配置缓存空值防穿透, 无法防击穿
 
 ## 开发过程小技巧
 
@@ -325,7 +346,31 @@
 
 #### 缓存菜品
 
+- 当多人同时访问时会卡在数据库查询处 / 切换分类都要进行一次sql, 用 redis 缓存提高查询性能
+- redis 基于内存存储, 数据库基于磁盘io
+- 查询菜品 -> 后端服务 -> 是否有缓存 -> 读取缓存 / 查询数据库->载入缓存
+- 缓存逻辑:
+  - 每个分类下的菜品保存一份缓存数据
+  - 数据库菜品数据变更时清理缓存数据
+- 在 user/DishController 中新增 redis 代码
+- 清理缓存: 在 admin/DishController 的增删改时都要清理
+  - 当可能影响多个 key 时全删了
+  - 增删改存在是不常用的, 不必太麻烦
 
+#### 缓存套餐
+
+- 使用 Spring Cache 改进
+- 实现:
+  - 导入 springcache 和 redis, 在启动类加上 @EnableCaching
+  - 在用户端 SetmealController 的 list 方法加上 @Cacheable
+  - 在管理端 SetmealController 的 增删改方法加上 @CacheEvict
+
+#### 购物车
+
+- 添加购物车: 将添加的保存到数据库, 相同的number+1, 不同的新增数据
+- 查看购物车, 清空购物车
+- 删除单个购物车内容: 有多个时number-1, 否则删除该内容
+- 改进: 引入redis缓存
 
 ## 改进课程内容
 
