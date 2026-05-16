@@ -3,6 +3,7 @@ package com.sky.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
+import com.sky.constant.StatusConstant;
 import com.sky.dto.DishDTO;
 import com.sky.dto.DishPageQueryDTO;
 import com.sky.entity.Dish;
@@ -12,16 +13,19 @@ import com.sky.mapper.DishFlavorMapper;
 import com.sky.mapper.DishMapper;
 import com.sky.mapper.SetmealDishMapper;
 import com.sky.result.PageResult;
+import com.sky.result.Result;
 import com.sky.service.DishService;
 import com.sky.vo.DishVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -33,6 +37,9 @@ public class DishServiceImpl implements DishService {
 	private DishFlavorMapper dishFlavorMapper;
 	@Autowired
 	private SetmealDishMapper setmealDishMapper;
+
+	@Autowired
+	private RedisTemplate redisTemplate;
 
 	/**
 	 * 新增菜品，同时保存对应的口味数据
@@ -57,6 +64,10 @@ public class DishServiceImpl implements DishService {
 			}
 			dishFlavorMapper.insertBatch(flavors);
 		}
+
+		// 删除缓存数据
+		String key = "dish_" + dishDTO.getCategoryId();
+		clearCache(key);
 	}
 
 	@Override
@@ -82,6 +93,9 @@ public class DishServiceImpl implements DishService {
 		dishFlavorMapper.deleteBatch(ids);
 		// 批量删除
 		dishMapper.deleteBatch(ids);
+
+		// 删除缓存数据, 可能影响多个key, 全删了
+		clearCache("dish_*");
 	}
 
 	@Override
@@ -117,6 +131,9 @@ public class DishServiceImpl implements DishService {
 		Dish dish = new Dish();
 		BeanUtils.copyProperties(dishDTO, dish);
 		dishMapper.update(dish);
+
+		// 删除缓存数据, 可能修改分类, 影响多个key, 全删了
+		clearCache("dish_*");
 	}
 
 	@Override
@@ -126,6 +143,9 @@ public class DishServiceImpl implements DishService {
 				.status(status)
 				.build();
 		dishMapper.update(dish);
+
+		// 删除缓存数据, 要精准获取分类id还要查数据库, 所以全删了
+		clearCache("dish_*");
 	}
 
 	@Override
@@ -136,16 +156,33 @@ public class DishServiceImpl implements DishService {
 
 	/**
 	 * 条件查询菜品和口味
-	 * @param dish
+	 * @param
 	 * @return
 	 */
-	public List<DishVO> listWithFlavor(Dish dish) {
+	public List<DishVO> listWithFlavor(Long categoryId) {
+		// 查询 redis 中是否有缓存, 存在则无需查询数据库, 不存在则查询数据库并存入
+		// 构造 redis 的key, key = dish_ + 分类id
+		String key = "dish_" + categoryId;
+		// 查询 redis 中是否有缓存
+		List<DishVO> list = (List<DishVO>) redisTemplate.opsForValue().get(key);
+		if (list != null && list.size() > 0) {
+			return list;
+		}
+
+		// 查询数据库菜品
+		Dish dish = Dish.builder()
+				.categoryId(categoryId)
+				.status(StatusConstant.ENABLE)
+				.build();
+
 		List<Dish> dishList = dishMapper.list(dish.getCategoryId());
 
 		List<DishVO> dishVOList = new ArrayList<>();
 
+		// 查询口味
 		for (Dish d : dishList) {
 			// 如果传入了状态条件，则只返回对应状态的菜品, 用户只能查询起售状态的菜品
+			// 只返回起售状态的菜品
 			if (dish.getStatus() != null && !d.getStatus().equals(dish.getStatus())) {
 				continue;
 			}
@@ -160,7 +197,14 @@ public class DishServiceImpl implements DishService {
 			dishVOList.add(dishVO);
 		}
 
+		// 缓存到 redis 中
+		redisTemplate.opsForValue().set(key, dishVOList);
+
 		return dishVOList;
 	}
 
+	private void clearCache(String key) {
+		Set keys = redisTemplate.keys(key);
+		redisTemplate.delete(keys);
+	}
 }

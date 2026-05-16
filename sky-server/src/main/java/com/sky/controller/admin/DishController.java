@@ -39,11 +39,6 @@ public class DishController {
 	public Result save(@RequestBody DishDTO dishDTO) {
 		log.info("新增菜品：{}", dishDTO);
 		dishService.saveWithFlavor(dishDTO);
-
-		// 删除缓存数据
-		String key = "dish_" + dishDTO.getCategoryId();
-		clearCache(key);
-
 		return Result.success();
 	}
 
@@ -70,10 +65,6 @@ public class DishController {
 	public Result delete(@RequestParam List<Long> ids) {  // 传入的是字符串1,2,3, 用 RequestParam 解析成List
 		log.info("批量删除：{}", ids);
 		dishService.deleteBatch(ids);
-
-		// 删除缓存数据, 可能影响多个key, 全删了
-		clearCache("dish_*");
-
 		return Result.success();
 	}
 
@@ -100,10 +91,6 @@ public class DishController {
 	public Result update(@RequestBody DishDTO dishDTO) {
 		log.info("修改菜品：{}", dishDTO);
 		dishService.updateWithFlavor(dishDTO);
-
-		// 删除缓存数据, 可能修改分类, 影响多个key, 全删了
-		clearCache("dish_*");
-
 		return Result.success();
 	}
 
@@ -118,10 +105,6 @@ public class DishController {
 	public Result startOrStop(@PathVariable Integer status, Long id) {
 		log.info("菜品起售停售：{}", status, id);
 		dishService.startOrStop(status, id);
-
-		// 删除缓存数据, 要精准获取分类id还要查数据库, 所以全删了
-		clearCache("dish_*");
-
 		return Result.success();
 	}
 
@@ -131,10 +114,5 @@ public class DishController {
 		log.info("根据分类id查询菜品数据：{}", categoryId);
 		List<Dish> list = dishService.list(categoryId);
 		return Result.success(list);
-	}
-
-	private void clearCache(String key) {
-		Set keys = redisTemplate.keys(key);
-		redisTemplate.delete(keys);
 	}
 }

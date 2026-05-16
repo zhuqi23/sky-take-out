@@ -37,24 +37,26 @@ public class DishController {
 	@ApiOperation("根据分类id查询菜品")
 	public Result<List<DishVO>> list(Long categoryId) {
 
-		// 查询 redis 中是否有缓存, 存在则无需查询数据库, 不存在则查询数据库并存入
-		// 构造 redis 的key, key = dish_ + 分类id
-		String key = "dish_" + categoryId;
-		// 查询 redis 中是否有缓存
-		List<DishVO> list = (List<DishVO>) redisTemplate.opsForValue().get(key);
-		if (list != null && list.size() > 0) {
-			return Result.success(list);
-		}
+//		// 查询 redis 中是否有缓存, 存在则无需查询数据库, 不存在则查询数据库并存入
+//		// 构造 redis 的key, key = dish_ + 分类id
+//		String key = "dish_" + categoryId;
+//		// 查询 redis 中是否有缓存
+//		List<DishVO> list = (List<DishVO>) redisTemplate.opsForValue().get(key);
+//		if (list != null && list.size() > 0) {
+//			return Result.success(list);
+//		}
+//
+//		Dish dish = new Dish();
+//		dish.setCategoryId(categoryId);
+//		dish.setStatus(StatusConstant.ENABLE);//查询起售中的菜品
+//
+//		// 查询数据库
+//		list = dishService.listWithFlavor(dish);
+//
+//		// 缓存到 redis 中
+//		redisTemplate.opsForValue().set(key, list);
 
-		Dish dish = new Dish();
-		dish.setCategoryId(categoryId);
-		dish.setStatus(StatusConstant.ENABLE);//查询起售中的菜品
-
-		// 查询数据库
-		list = dishService.listWithFlavor(dish);
-
-		// 缓存到 redis 中
-		redisTemplate.opsForValue().set(key, list);
+		List<DishVO> list = dishService.listWithFlavor(categoryId);
 
 		return Result.success(list);
 	}
