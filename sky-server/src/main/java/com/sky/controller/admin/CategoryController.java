@@ -54,7 +54,6 @@ public class CategoryController {
 	 * 根据id删除分类
 	 * @param id
 	 * @return
-	 * todo 删除分类时, 删除的分类下有商品, 会出现异常, 待解决
 	 */
 	@DeleteMapping
 	@ApiOperation("根据id删除分类")
